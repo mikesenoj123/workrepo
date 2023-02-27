@@ -1,5 +1,4 @@
 from util import *
-import collections
 
 
 # Dropship class object
@@ -18,6 +17,7 @@ class dropship_report:
 
     def show_drop(self):
         print(f'\nAddress: {self.address} \n\nQty: {self.qty}, Pallets: {self.pallets}, EMM: {self.emm}, one_foot: {self.one_foot}, MM: {self.mm}')
+
 
         
 dropship_reports = []
