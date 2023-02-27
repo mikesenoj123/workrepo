@@ -14,10 +14,11 @@ class dropship_report:
 
     def show_weight(self):
         weight = round((self.pallets * 20) + (self.emm * 2.3) + (self.one_foot * 1.3) + (self.mm * 2))
-        return f'Weight in pounds: {weight}'
+        print(f'Weight in pounds: {weight}')
 
-    def __str__(self):
-        return f'\naddress: {self.address} \nqty: {self.qty}, pallets: {self.pallets}, EMM: {self.emm}, one_foot: {self.one_foot}, MM: {self.mm}'
+    def show_drop(self):
+        print(f'\nAddress: {self.address} \n\nQty: {self.qty}, Pallets: {self.pallets}, EMM: {self.emm}, one_foot: {self.one_foot}, MM: {self.mm}')
+
         
 dropship_reports = []
 
@@ -67,8 +68,9 @@ count = 1
 
 
 for drop in dropship_reports:
-    print(f'Drop: {count}')
+    print(f'\nDrop: {count}')
     count = count + 1
-    print(drop)
-    print(drop.show_weight())
+
+    drop.show_drop()
+    drop.show_weight()
     print()
