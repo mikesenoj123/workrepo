@@ -28,14 +28,6 @@ locations = get_locations()
 containers = get_containers()
     
 
-qty = 0
-emm_count = 0
-one_count = 0
-mm_count = 0
-pallets = 0
-pallets_qty = 0
-count = 0
-
 
 for loc in locations:
 
