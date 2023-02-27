@@ -23,7 +23,6 @@ locations = get_locations()
 containers = get_containers()
     
 
-
 qty = 0
 emm_count = 0
 one_count = 0
@@ -31,7 +30,6 @@ mm_count = 0
 pallets = 0
 pallets_qty = 0
 count = 0
-
 
 
 for loc in locations:
@@ -61,5 +59,10 @@ for loc in locations:
     dropship_reports.append(dropship_report(address=loc, qty=qty, pallets=pallets, emm=emm_count, mm=mm_count, one_foot=one_count))
 
 
+count = 1
+
+
 for drop in dropship_reports:
+    print(f'Drop: {count}')
+    count = count + 1
     print(drop)
