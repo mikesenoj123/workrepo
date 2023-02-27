@@ -1,0 +1,256 @@
+NAME=Generate Postage Report & 3602 Ver3_0 - Acquire 
+COMMAND=Set SAFETY OFF
+
+PUBLIC cJobDesc 
+
+*Establish JobID, Customer, Description 
+cDbfName = JustStem(dbf())
+
+cJobID = ALLT(LEFT(cDbfName,13))
+*messagebox(cJobID)
+cJobNum = ALLT(LEFT(cDbfName,6))
+*messagebox(cJobNum)
+cCustID = ALLT(strextract(cDbfName," "," "))
+*messagebox(cCustID)
+cJobDesc = ALLT(strextract(dbf(), " ", ".", 2,1))
+*messagebox(cJobDesc)
+
+*Establish Paths
+cdbfPath = ADDBS(JUSTPATH(DBF()))
+*messagebox(cdbfPath)
+
+*Check to see if Directory Exists
+If not Directory(cdbfpath+"POSTAL DOCS\")
+    MD cdbfpath+"POSTAL DOCS\"
+                endif
+
+cPostalDocs = cdbfpath+"POSTAL DOCS\"
+
+cdbfIni = filetostr(cDbfPath+JUSTSTEM(dbf())+".ini")
+cPresortFolder = strextract(cDbfIni, "WORKING DIR=",chr(13))
+*Messagebox(cPresortFolder)
+*--Use filetostr to put presort.ini into a string
+cFileContents = filetostr(cPresortFolder + "presort.ini")
+
+* Gather information from presort.ini for postage report and to establish if Stamps report or Imprint report is needed
+cMailDate = strextract(cFileContents, "MAILINGDATE=", chr(13))
+*messagebox("cMailDate "+cMailDate)
+cMailClass = IIF(strextract(cFileContents,"PERMIT TYPE=",chr(13))="PROFIT","","NON PROFIT ")  + strextract(cFileContents,"MAIL TYPE=",chr(13))
+*messagebox("cMailClass "+cMailClass)
+cPostageType = strextract(cFileContents, "PAYMETH=", chr(13))
+*messagebox("cPostageType "+cPostageType)
+cQuantity = strextract(cFileContents, "STATEMENT TOTAL PIECES=",chr(13))
+*messagebox("cQuantity "+cQuantity)
+cPermitOwner = strextract(cFileContents, "PERMITHOLDER=", "|")
+*messagebox("cPermitOwner "+cPermitOwner)
+cPermitNum = IIF(LEN(strextract(cFileContents, "NETDUEPERMITNO=", chr(13)))<1,strextract(cFileContents, "PERMITNO=", chr(13),2,1),strextract(cFileContents, "NETDUEPERMITNO=", chr(13)))
+*messagebox("cPermitNum "+cPermitNum )
+cPermitPostage = strextract(cFileContents, "STATEMENT NET POSTAGE DUE=", chr(13))
+*messagebox("cPermitPostage "+cPermitPostage )
+cTotalPostage = strextract(cFileContents, "STATEMENT TOTAL POSTAGE=", chr(13))
+*messagebox("cTotalPostage "+cTotalPostage )
+cPieceType = strextract(cFileContents,"PIECE TYPE=",chr(13))
+
+
+DO CASE
+Case cPostageType = "IMPRINT"
+      *Create Postage report for Permit postage
+      cRJobID = PADR("Job ID",20," ") + cJobID + chr(13)
+      cRJobDesc =  PADR("Description",20," ") + cJobDesc + chr(13)
+      cRQty = PADR("Quantity",20," ") + cQuantity + chr(13)
+      cRMailClass = PADR("Mail Class",20," ") + cMailClass + chr(13)
+      cRMaildate = PADR("Mail Date",20," ") + cMailDate + chr(13)
+      cRPermitNum = PADR( "Permit Number" , 20 , " " ) + cPermitNum + chr(13)
+      cRPermitOwner = PADR("Permit Owner",20," ") + cPermitOwner + chr(13)
+      *Only One line for postage total
+      cRPostage = PADR("Postage Due",20," ") + REDUCE(TRANSFORM(VAL(cPermitPostage),"@B $9,999,999.99")) + chr(13)
+      cRPieceType = PADR("Piece Type",20," ") + cPieceType  +chr(13)      
+      *Write Variables to a String & Write String to file
+      cRReport = cRJobID + cRJobDesc + cRMaildate + cRMailClass + cRPieceType + cRPermitNum + cRPermitOwner + cRQty + cRPostage
+	
+      
+Case cPostageType = "STAMPS"
+      *Create Postage report for Stamps that includes 3 lines for Postage
+      cRJobID = PADR("Job ID",20," ") + cJobID + chr(13)
+      cRJobDesc =  PADR("Description",20," ") + cJobDesc + chr(13)
+      cRQty = PADR("Quantity",20," ") + cQuantity + chr(13)
+      cRPermitNum = PADR("Permit Number",20," ") + cPermitNum + chr(13)
+      cRMailClass = PADR("Mail Class",20," ") + cMailClass + chr(13)
+      cRMaildate = PADR("Mail Date",20," ") + cMailDate + chr(13)
+      cRPieceType = PADR("Piece Type",20," ") + cPieceType  +chr(13) 
+      cRPermitOwner = PADR("Permit Owner",20," ") + cPermitOwner + chr(13)
+      * cStampPostage is Calculated by converting TotalPostage and Permit postage to numbers and then subtracting and converting to currency 
+      cStampPostage = REDUCE(TRANSFORM(VAL(cTotalPostage) - VAL(cPermitPostage), "@B $9,999,999.99"))
+       *messagebox("cStampPostage "+cStampPostage)
+      *Write Variables to a String
+       cRPostage = PADR("Postage Total",20," ") + REDUCE(TRANSFORM(VAL(cTotalPostage),"@B $9,999,999.99")) + chr(13)+ PADR("Postage Stamps",20," ") + cStampPostage + chr(13) +PADR("Postage Permit",20," ") + REDUCE(TRANSFORM(VAL(cPermitPostage), "@B $9,999,999.99"))
+       *messagebox("cRPostage " +cRPostage)
+      *Write String 
+       cRReport = cRJobID + cRJobDesc + cRMaildate + cRMailClass + cRPieceType + cRPermitNum + cRPermitOwner + cRQty + cRPostage
+	
+ENDCASE
+
+*--CREATE 3602 using pdftk cat
+*Copy eDocumentation.pdf to BIN\PDFTK\
+COPY FILE cpresortfolder + "edocumentation.pdf" TO "C:\bin\pdftk\eDocumentation.pdf"
+*Use PDFTK single line command to create 3602
+Run  pdftk  A="C:\bin\pdftk\eDocumentation.pdf" cat A1-2 output "C:\bin\pdftk\3602.pdf"
+
+*--Move 3602 into Postal Docs folder
+RENAME "C:\bin\pdftk\3602.pdf" TO cPostalDocs + "3602_" + cdbfname + ".pdf"
+
+* Purpose - To get a count of how many pallets are on a given job and feed that into
+* another command, mainly the drop ship component of the postal report command
+* and possibly into the cover page for shipping summary
+
+PUBLIC nPallets
+
+* convert the maildat.csm into a string
+*messagebox(FORCEEXT(DBF(),".ini"))
+cIniInfo = filetostr(FORCEEXT(DBF(),".ini"))
+cPresortFolder = strextract(cIniInfo,"WORKING DIR=",chr(13))
+cCsmStr = filetostr(cPresortFolder+"maildat.csm")
+
+*Feed the string into an Array
+nLineCount = ALINES(aCsmstr, cCsmStr)
+*messagebox("Lines = " +ALLT(str(nLineCount)))
+
+*Extract the container designation from each element in the array
+*container designation is character 13 and is P for Pallets, T for MM trays,
+*O for 1 foot trays, E for EMM trays and S for sacks
+
+nLine = 1
+PRIVATE cFullCont, cLineChar
+cFullCont = ""
+
+FOR nLine = 1 TO nLineCount
+	*extract character 13 and feed it into cLineChar
+	cLineChar = substr(aCsmStr[nLine],13,1)
+	cFullCont = cFullCont + cLineChar
+
+ENDFOR
+*messagebox(cFullCont)
+nPallets = OCCURS("P",cFullCont)
+nEmmTrays = OCCURS("E",cFullCont)
+n1FootTrays = OCCURS("O",cFullCont)
+nMMTrays = OCCURS("T",cFullCont)
+
+*Calculate Container Weight
+	nContWeight = Round((nPallets * 20) + (nEmmTrays * 2.3) + (n1FootTrays * 1.3) + (nMMTrays * 2),2)
+
+*Calculate Mail Weight
+	*Get Piece weight and piece count from Presort.INI file
+	*messagebox(ADDBS(JustPath(DBF()))+JustStem(dbf())+".ini")
+	cDBFINI = filetostr(ADDBS(JustPath(DBF()))+JustStem(dbf())+".ini")
+
+	*messagebox(cDBFINI)
+	cPresortINI = filetostr(ADDBS(JUSTPATH(DBF()))+ADDBS(strextract(cDBFini,"PRESORTFLDR=",chr(13)))+"presort.ini")
+
+	nMailWeight = Round(Val(strextract(cPresortini,"STATEMENT TOTAL PIECES=",chr(13))) * VAL(strextract(cPresortini,"WEIGHT=",chr(13))),2)
+	*messagebox(nMailWeight)
+
+	nShipWeight = nContWeight + nMailWeight    
+
+*-- Drop Ship Program
+
+* Determine if the job is being dropshipped or not
+cDSStatus = IIF(VAL(strextract(cFileContents,"DBMC=",CHR(13)))+VAL(strextract(cFileContents,"DSCF=",CHR(13)))+VAL(strextract(cFileContents,"ENTSCF=",CHR(13)))+VAL(strextract(cFileContents,"DBMC==",CHR(13),2,1))>0,"Yes","No")
+nNumDropship = nPallets
+
+*-- If Drop shipping then determine how many pallets
+*-- Greater than zero proceed with Drop ship program, else end Drop ship program
+IF cDSStatus = "Yes"
+	IF nNumDropShip > 0
+		* Copy of eDocumentation exists in PDFTK folder from the creation of 3602
+		* PDFTK command is very straight forward for 1 pallet 
+		DO CASE
+		CASE nNumDropShip = 1
+			Run  pdftk A="C:\bin\pdftk\edocumentation.pdf" cat Aend-1 output C:\bin\pdftk\revdoc.pdf
+			Run pdftk A="C:\bin\pdftk\edocumentation.pdf" B=C:\bin\pdftk\revdoc.pdf C=C:\bin\pdftk\DSD1.pdf cat A B1 C output C:\bin\pdftk\eDoc.pdf
+			 
+			*messagebox(ADDBS(JUSTPATH(DBF())) + "Presort Folder\eDoc.pdf")
+			RENAME C:\bin\PDFTK\eDoc.pdf TO cPresortFolder + "eDocs.pdf"
+
+			* Open the Tags File
+			*DECLARE INTEGER ShellExecute IN SHELL32.DLL ;
+			*INTEGER,STRING,STRING,STRING,STRING,INTEGER
+			*lcFileName = cPresortFolder + "eTags.pdf"
+			*lnResult=ShellExecute(0,"open",lcFilename,"","",3)
+* Review Paperwork Prompt
+			Messagebox("Review the Paperwork for Accuracy before moving on")
+			* Open the eDoc Pdf
+			DECLARE INTEGER ShellExecute IN SHELL32.DLL ;
+			INTEGER,STRING,STRING,STRING,STRING,INTEGER
+			lcFileName = cPresortFolder + "eDocs.pdf"
+			lnResult=ShellExecute(0,"open",lcFilename,"","",3)
+			lcFileName = cPresortFolder + "eTags.pdf"
+			lnResult=ShellExecute(0,"open",lcFilename,"","",3)
+			***** Wait prompt
+			*WAIT WINDOW "Processing..." 5
+			nContPrompt = Messagebox("Is the paperwork prepared correctly?","Paperwork Review",4)
+			IF nContPrompt = 7
+				QUIT
+			ENDIF            
+            *Display Container count and Shipping weight
+        	_CLIPTEXT = "ACQUIRE "+ strextract(JUSTSTEM(DBF())," "," ",2) + chr(9) + IIF(LEN(ALLT(LEFT(JUSTSTEM(DBF()),6)))=5, "RPI "+ALLT(LEFT(JUSTSTEM(DBF()),6)), "TASH "+ALLT(LEFT(JUSTSTEM(DBF()),6))) + chr(9) + cQuantity + chr(9) + ALLT(str(nShipWeight)) + chr(9) + ALLT(str(nPallets)) + chr(9)
+			messagebox(cRMaildate +cRPieceType + PADR("Job Name",20," ")+IIF(LEN(ALLT(LEFT(JUSTSTEM(DBF()),6)))=5, "ROBERTS "+ALLT(LEFT(JUSTSTEM(DBF()),6)), "PH "+ALLT(LEFT(JUSTSTEM(DBF()),6))) + chr(13) + cRQty + CHR(13)+ "Shipping Weight = " + ALLT(str(nShipWeight))+" lbs." + chr(13)+ "Pallets = "+ALLT(str(nPallets)))
+			
+		
+		*Multipallet set up is more difficult.  Need to write a BAT file to execute this
+		CASE nNumDropShip > 1
+			* - Create 2 docs from original eDocumentation.pdf; eDocpages.pdf & placards.pdf
+			*eDocs = 
+			*  - pdftk A=edocumentation.pdf cat Aend-1 output revdoc.pdf
+			*  - pdftk A=revdoc.pdf cat A5-end output eDoc.pdf
+			*      - Page number is equal to (# of pallets * 2) + 1
+			*  - pdftk A=eDoc.pdf cat Aend-1 output eDocpages.pdf
+			*- placards = 
+			*	- pdftk A=A.pdf cat Ar1-r2 output placards.pdf
+			*- end page is equal to # of pallets * 2
+		
+			* Create The batch file
+			cCommand1 = "pdftk A=C:\bin\pdftk\eDocumentation.pdf cat Aend-1 output C:\bin\pdftk\revdoc.pdf" + chr(10);
+			+ "pdftk A=C:\bin\pdftk\revdoc.pdf cat A" + ALLT(str((nNumDropShip *2)+1)) + "-end output C:\bin\pdftk\eDoc.pdf" + chr(10); 
+			+ "pdftk A=C:\bin\pdftk\eDoc.pdf cat Aend-1 output C:\bin\pdftk\eDocpages.pdf" + chr(10); 
+			+ "pdftk A=C:\bin\pdftk\revdoc.pdf cat A1-" + ALLT(str(nNumDropShip * 2)) + " output C:\bin\pdftk\revPlacards.pdf" + chr(10)
+			cCommand2 = "pdftk A=C:\bin\pdftk\revPlacards.pdf cat Aend-1 output C:\bin\pdftk\placards.pdf" + chr(10); 
+			+ "pdftk A=C:\bin\pdftk\placards.pdf B=C:\bin\pdftk\DSD" + ALLT(str(nNumDropShip)) + ".pdf shuffle Aeven Aeven Aeven B output C:\bin\pdftk\endpages.pdf" + chr(10); 
+			+ [pdftk A=C:\bin\pdftk\eDocpages.pdf B=C:\bin\pdftk\endpages.pdf cat A B output "] + cPresortFolder + [eDocs.pdf"] + chr(10)
+
+			STRTOFILE(cCommand1+cCommand2, "C:\bin\pdftk\BatchFile.bat")
+		
+			*Run the Batch File
+			RUN  "C:\bin\pdftk\BatchFile.bat"
+			*Move the eDocs.pdf to the Presort Folder
+		
+			*RENAME "C:\bin\pdftk\eDocs.pdf" TO cPresortFolder + "eDoc.pdf"
+
+			* Open the eDoc Pdf
+			DECLARE INTEGER ShellExecute IN SHELL32.DLL ;
+			INTEGER,STRING,STRING,STRING,STRING,INTEGER
+			lcFileName = cPresortFolder + "eDocs.pdf"
+			lnResult=ShellExecute(0,"open",lcFilename,"","",3)
+			lcFileName = cPresortFolder + "eTags.pdf"
+			lnResult=ShellExecute(0,"open",lcFilename,"","",3)
+
+			*-ASK the cost of Drop Shipping after opening the eDoc PDF
+			*cDSCost = INPUTBOX("Cost For Drop Shipping", "Drop Ship Cost  $","$",0)
+		
+			* Create the line to be added to the end of the Postage report
+			*cRDSCost = PADR("Drop Ship Due",20," ") + cDSCost + chr(13)
+			*Messagebox(cRDSCost)
+			* Add the line to the end of the potage report
+			*cRReport = CRReport + chr(13) + cRDSCost
+
+			* Open the Tags File
+			*DECLARE INTEGER ShellExecute IN SHELL32.DLL ;
+			*INTEGER,STRING,STRING,STRING,STRING,INTEGER
+			*lcFileName = cPresortFolder + "eTags.pdf"
+			*lnResult=ShellExecute(0,"open",lcFilename,"","",3)
+
+		ENDCASE
+	ENDIF
+ENDIF
+
+Strtofile(CRReport, cPostalDocs + "postage report_" + cdbfname + ".txt")
+_CLIPTEXT = CRReport

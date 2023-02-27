@@ -1,0 +1,23 @@
+NAME=_test - Drop Ship Locale Key Lookup 
+COMMAND=* establish Drop Ship Location for Drop Ship report
+* Get Locale Key from DSCF.txt of BMDC.txt(NDC File)
+cDSCF = filetostr("C:\Users\Ray.Dabkowski\Desktop\WORKING\Presort Folder\DBMC.TXT")
+* File to String, ALLT(substr(cFile,7,8)), store as cLocale
+cLocale = ALLT(substr(cDSCF,7,8))
+* Filetostring Locale Key Text File - Tab delimited
+cOrigins = filetostr("C:\Program Files (x86)\AccuZIP6 5.0\OriginEntry.txt")
+*Location Info 
+cLocInfo = strextract(cOrigins,cLocale,chr(13))
+* Location Name - String extract(cLocaleKeyFile,cLcale,chr(9),chr(9))
+cLocName = strextract(cLocInfo,chr(9),chr(9))
+* Location Address - String extract(cLocaleKeyFile,cLcale,chr(9),chr(9),2)
+cLocAddress = strextract(cLocInfo,chr(9),chr(9),2)
+* Location City - String extract(cLocaleKeyFile,cLcale,chr(9),chr(9),3)
+cLocCity = strextract(cLocInfo,chr(9),chr(9),3)
+* Location State - String extract(cLocaleKeyFile,cLcale,chr(9),chr(9),4)
+cLocState = strextract(cLocInfo,chr(9),chr(9),4)
+* Location Zip - String extract(cLocaleKeyFile,cLcale,chr(9),chr(9),5)
+cLocZip = strextract(cLocInfo,chr(9),chr(9),5)
+
+Messagebox(cLocale +chr(13)+cLocInfo+chr(13)+cLocName+chr(13)+cLocAddress+chr(13)+cLocCity+", "+cLocState+"  "+cLocZip)
+*messagebox(cLocName)
